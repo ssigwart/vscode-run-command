@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			.marginT10 {
+				margin-top: 10px;
+			}
+			div.formInput label,
+			div.formInput input[type="text"] {
+				display: block;
+			}
+			div.formInput input[type="text"],
+			div.formInput textarea {
+				width: 100%;
+				box-sizing: border-box;
+			}
+			#results textarea {
+				font-family: monospace;
+				height: 40vh;
+			}
+			#history {
+				position: relative;
+			}
+			#historyOpts {
+				position: absolute;
+				max-height: max(200px, 75vh);
+				width: 100%;
+				box-sizing: border-box;
+				border: 1px solid #606060;
+				border-top: none;
+				padding: 0;
+				margin: 0;
+			}
+			#historyOpts li {
+				list-style: none;
+				padding: 2px 5px;
+				margin: 0;
+				background-color: #2c2c2c;
+				display: block;
+				cursor: default;
+			}
+			#historyOpts li.active {
+				background-color: #3a3a3a;
+			}
+			#historyOpts li a {
+				float: right;
+				text-decoration: none;
+			}
+		</style>
+	</head>
+	<body>
+
+		<!-- Config -->
+		<div id="config">
+			<form method="get" id="form">
+				<div class="formInput">
+					<label for="cmd">Command to Run</label>
+					<input type="text" id="cmd" list="cmdHist" placeholder="Command" aria-label="Command to run" required="required" />
+					<div id="history" hidden="hidden">
+						<ul id="historyOpts">
+							<!-- Template -->
+							<li>
+								<span></span>
+								<a href="#">✕</a>
+							</li>
+						</ul>
+					</div>
+				</div>
+
+				<div class="marginT10">
+					<div class="formInput">
+						<label>
+							<input type="checkbox" id="selectAsInput" checked="checked" />
+							Use selection as stdin input.
+						</label>
+					</div>
+
+					<div class="formInput">
+						<label>
+							<input type="checkbox" id="replaceWithOutput" checked="checked" />
+							Replace selection with command output.
+						</label>
+					</div>
+				</div>
+
+				<div class="marginT10">
+					<button type="submit">Run</button>
+				</div>
+			</form>
+		</div>
+
+		<!-- Running -->
+		<div id="running" hidden="hidden">
+			<h2>Running Command</h2>
+			<pre></pre>
+			<div class="marginT10">
+				<button type="button" id="cancel">Cancel</button>
+			</div>
+		</div>
+
+		<!-- Results -->
+		<div id="results" hidden="hidden">
+			<h2>Output</h2>
+			<div class="formInput">
+				<b>stdout</b><br/>
+				<textarea name="stdout"></textarea>
+			</div>
+			<div class="formInput">
+				<b>stderr</b><br/>
+				<textarea name="stderr"></textarea>
+			</div>
+		</div>
+
+		<script>
+			window.addEventListener("DOMContentLoaded", function() {
+				const vscode = acquireVsCodeApi();
+
+				// Get page sections
+				const configSection = document.getElementById("config");
+				const runningSection = document.getElementById("running");
+				const resultsSection = document.getElementById("results");
+
+				// Get elements
+				const cmdInput = document.getElementById("cmd");
+				const cancelBtn = document.getElementById("cancel");
+				const selectAsInputCheckbox = document.getElementById("selectAsInput");
+				const replaceWithOutputCheckbox = document.getElementById("replaceWithOutput");
+
+				// Focus on input
+				cmdInput.focus();
+
+				// Set up form
+				const form = document.getElementById("form");
+				form.addEventListener("submit", function(e) {
+					e.preventDefault();
+
+					// Get command
+					const cmd = cmdInput.value;
+
+					// Set up running section
+					const pre = runningSection.getElementsByTagName("pre")[0];
+					while (pre.childNodes.length > 0)
+						pre.removeChild(pre.childNodes[0]);
+					pre.appendChild(document.createTextNode(cmd));
+
+					// Show section
+					configSection.hidden = true;
+					runningSection.hidden = false;
+
+					// Start command
+					vscode.postMessage({
+						type: "run",
+						cmd: cmd,
+						selectionAsInput: selectAsInputCheckbox.checked,
+						outputReplacesSelection: replaceWithOutputCheckbox.checked
+					});
+				});
+
+				// Set up cancel button
+				cancelBtn.addEventListener("click", function(e) {
+					if (!runningSection.hidden)
+					{
+						runningSection.hidden = true;
+						// Cancel command
+						vscode.postMessage({
+							type: "cancel"
+						});
+					}
+				});
+
+				// Set up history
+				let historyItems = [];
+				const historyElem = document.getElementById("history");
+				const historyOptsElem = document.getElementById("historyOpts");
+				const historyLiTemplate = historyOptsElem.querySelector("li");
+				historyOptsElem.removeChild(historyLiTemplate);
+				const activeClass = "active";
+				let typedCmd = null;
+				// Function to remove history item
+				const removeHistoryCmdForLi = (li) => {
+					const cmd = li.querySelector("span").innerText;
+					vscode.postMessage({
+						type: "history-remove",
+						cmd: cmd
+					});
+					li.remove();
+					historyItems = historyItems.filter((val) => val !== cmd);
+				};
+				// Set up li click handler
+				historyOptsElem.addEventListener("click", (e) => {
+					if (e.target.tagName === "LI")
+					{
+						const li = e.target;
+						cmdInput.value = li.querySelector("span").innerText;
+						li.classList.remove(activeClass);
+						historyElem.hidden = false;
+					}
+					// Check for delete button
+					else if (e.target.tagName === "A")
+					{
+						e.preventDefault();
+						e.stopPropagation();
+						removeHistoryCmdForLi(e.target.parentNode);
+					}
+				}, { capture: true });
+				// Set up mouse over
+				historyOptsElem.addEventListener("mouseover", (e) => {
+					const li = e.target;
+					if (li.tagName === "LI")
+					{
+						let currentFocus = historyOptsElem.querySelector("li." + activeClass);
+						if (currentFocus !== null)
+							currentFocus.classList.remove(activeClass);
+						li.classList.add(activeClass);
+						historyElem.hidden = false;
+
+						// Store typed command and set value
+						if (typedCmd === null)
+							typedCmd = cmdInput.value;
+						cmdInput.value = li.querySelector("span").innerText;
+					}
+				});
+				let cancelAutocomplete = () => {
+					if (!historyElem.hidden)
+					{
+						let currentFocus = historyOptsElem.querySelector("li." + activeClass);
+						if (currentFocus !== null)
+							currentFocus.classList.remove(activeClass);
+						historyElem.hidden = true;
+
+						// Restore typed value
+						if (typedCmd !== null && typedCmd !== "")
+							cmdInput.value = typedCmd;
+						typedCmd = null;
+					}
+				};
+				// Set up key handler
+				cmdInput.addEventListener("keyup", function(e) {
+					// Down
+					if (e.code === "ArrowDown")
+					{
+						let newFocus;
+						let currentFocus = historyOptsElem.querySelector("li." + activeClass);
+						if (currentFocus !== null)
+						{
+							if (currentFocus.nextElementSibling)
+							{
+								newFocus = currentFocus.nextElementSibling;
+								currentFocus.classList.remove(activeClass);
+							}
+						}
+						else
+						{
+							const firstOption = historyOptsElem.querySelector("li");
+							if (firstOption !== null)
+								newFocus = firstOption;
+						}
+						if (newFocus)
+						{
+							newFocus.classList.add(activeClass);
+							historyElem.hidden = false;
+
+							// Store typed command and set value
+							if (typedCmd !== null && typedCmd !== "")
+								typedCmd = cmdInput.value;
+							cmdInput.value = newFocus.querySelector("span").innerText;
+						}
+					}
+					// Up
+					else if (e.code === "ArrowUp")
+					{
+						let currentFocus = historyOptsElem.querySelector("li." + activeClass);
+						if (currentFocus !== null)
+						{
+							currentFocus.classList.remove(activeClass);
+							if (currentFocus.previousElementSibling)
+							{
+								const newFocus = currentFocus.previousElementSibling;
+								newFocus.classList.add(activeClass);
+
+								// Store typed command and set value
+								if (typedCmd === null)
+									typedCmd = cmdInput.value;
+								cmdInput.value = newFocus.querySelector("span").innerText;
+							}
+							else
+							{
+								historyElem.hidden = true;
+
+								// Restore typed value
+								if (typedCmd !== "")
+									cmdInput.value = typedCmd;
+								typedCmd = null;
+							}
+						}
+					}
+					// Escape
+					else if (e.code === "Escape")
+						cancelAutocomplete();
+					// Enter
+					else if (e.code === "Enter")
+					{
+						if (!historyElem.hidden)
+						{
+							historyElem.hidden = true;
+							e.preventDefault();
+						}
+					}
+					// Shift + delete  Delete history
+					else if (e.code === "Delete" && e.shiftKey)
+					{
+						let currentFocus = historyOptsElem.querySelector("li." + activeClass);
+						if (currentFocus !== null)
+							removeHistoryCmdForLi(currentFocus);
+					}
+				});
+				// Filter list
+				cmdInput.addEventListener("input", () => {
+					while (historyOptsElem.firstChild)
+						historyOptsElem.removeChild(historyOptsElem.firstChild);
+					const cmd = cmdInput.value;
+					let matchCnt = 0;
+					for (let historyItem of historyItems)
+					{
+						if (historyItem.startsWith(cmd))
+						{
+							matchCnt++;
+							const clone = historyLiTemplate.cloneNode(true);
+							clone.querySelector("span").innerText = historyItem;
+							if (historyItem === cmd)
+								clone.classList.add(activeClass);
+							historyOptsElem.appendChild(clone);
+						}
+					}
+					if (matchCnt > 0)
+						historyElem.hidden = false;
+				});
+				// Other ways to close
+				document.addEventListener("click", () => {
+					cancelAutocomplete();
+				});
+				document.body.addEventListener("keyup", (e) => {
+					// Escape
+					if (e.code === "Escape")
+						cancelAutocomplete();
+				});
+
+				// Set up response messages
+				window.addEventListener("message", e => {
+					const data = e.data;
+					if (data.type === "results")
+					{
+						// Set up output
+						for (const textarea of resultsSection.getElementsByTagName("textarea"))
+						{
+							const name = textarea.name;
+							textarea.value = data[name] ?? "";
+						}
+
+						// Show results
+						runningSection.hidden = true;
+						resultsSection.hidden = false;
+					}
+					// History
+					else if (data.type === "history")
+					{
+						historyItems = data.items;
+
+						// Add current history items
+						for (let historyItem of historyItems)
+						{
+							const clone = historyLiTemplate.cloneNode(true);
+							clone.querySelector("span").innerText = historyItem;
+							historyOptsElem.appendChild(clone);
+						}
+					}
+				});
+			});
+		</script>
+	</body>
+</html>
