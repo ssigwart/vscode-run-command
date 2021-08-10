@@ -193,7 +193,9 @@
 						const li = e.target;
 						cmdInput.value = li.querySelector("span").innerText;
 						li.classList.remove(activeClass);
-						historyElem.hidden = false;
+						historyElem.hidden = true;
+						cmdInput.focus();
+						typedCmd = null;
 					}
 					// Check for delete button
 					else if (e.target.tagName === "A")
@@ -297,8 +299,10 @@
 					// Escape
 					else if (e.code === "Escape")
 						cancelAutocomplete();
+				});
+				cmdInput.addEventListener("keypress", function(e) {
 					// Enter
-					else if (e.code === "Enter")
+					if (e.code === "Enter")
 					{
 						if (!historyElem.hidden)
 						{
