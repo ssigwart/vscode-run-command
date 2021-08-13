@@ -11,6 +11,7 @@ import { ExecCommandResponse, RunCommand, RunCommandResults } from './runCommand
  */
 export function activate(context: vscode.ExtensionContext): void
 {
+	const outputChannel = vscode.window.createOutputChannel("Run Command");
 	addCommand(context, "run-command.runCommand", () => {
 		const activeTextEditor = vscode.window.activeTextEditor;
 		if (!activeTextEditor)
@@ -72,7 +73,7 @@ export function activate(context: vscode.ExtensionContext): void
 					{
 						// Run command
 						case "run":
-							const result = startCommand(msg, activeTextEditor, selection);
+							const result = startCommand(msg, activeTextEditor, selection, outputChannel);
 							result.then((runCmd: RunCommand) => {
 								panel.title = "Run Command: " + runCmd.cmd;
 								execCmdResp = runCmd.execCmdResp;

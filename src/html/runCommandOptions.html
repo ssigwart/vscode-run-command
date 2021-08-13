@@ -205,21 +205,31 @@
 						removeHistoryCmdForLi(e.target.parentNode);
 					}
 				}, { capture: true });
-				// Set up mouse over
+				// Set up mouse over, but make sure it's not idle while typing
+				let ignoreMouseover = true;
+				historyOptsElem.addEventListener("mousemove", (e) => {
+					ignoreMouseover = false;
+				});
+				cmdInput.addEventListener("keydown", function(e) {
+					ignoreMouseover = true;
+				});
 				historyOptsElem.addEventListener("mouseover", (e) => {
-					const li = e.target;
-					if (li.tagName === "LI")
+					if (!ignoreMouseover)
 					{
-						let currentFocus = historyOptsElem.querySelector("li." + activeClass);
-						if (currentFocus !== null)
-							currentFocus.classList.remove(activeClass);
-						li.classList.add(activeClass);
-						historyElem.hidden = false;
+						const li = e.target;
+						if (li.tagName === "LI")
+						{
+							let currentFocus = historyOptsElem.querySelector("li." + activeClass);
+							if (currentFocus !== null)
+								currentFocus.classList.remove(activeClass);
+							li.classList.add(activeClass);
+							historyElem.hidden = false;
 
-						// Store typed command and set value
-						if (typedCmd === null)
-							typedCmd = cmdInput.value;
-						cmdInput.value = li.querySelector("span").innerText;
+							// Store typed command and set value
+							if (typedCmd === null)
+								typedCmd = cmdInput.value;
+							cmdInput.value = li.querySelector("span").innerText;
+						}
 					}
 				});
 				let cancelAutocomplete = () => {
@@ -299,23 +309,27 @@
 					// Escape
 					else if (e.code === "Escape")
 						cancelAutocomplete();
-				});
-				cmdInput.addEventListener("keypress", function(e) {
-					// Enter
-					if (e.code === "Enter")
-					{
-						if (!historyElem.hidden)
-						{
-							historyElem.hidden = true;
-							e.preventDefault();
-						}
-					}
-					// Shift + delete  Delete history
+					// Shift + delete - Delete history
 					else if (e.code === "Delete" && e.shiftKey)
 					{
 						let currentFocus = historyOptsElem.querySelector("li." + activeClass);
 						if (currentFocus !== null)
 							removeHistoryCmdForLi(currentFocus);
+					}
+				});
+				cmdInput.addEventListener("keypress", function(e) {
+					// Don't submit on enter if the enter was to select the active history item
+					if (e.code === "Enter")
+					{
+						if (!historyElem.hidden)
+						{
+							const currentFocus = historyOptsElem.querySelector("li." + activeClass);
+							if (currentFocus !== null)
+							{
+								historyElem.hidden = true;
+								e.preventDefault();
+							}
+						}
 					}
 				});
 				// Filter list
@@ -331,8 +345,6 @@
 							matchCnt++;
 							const clone = historyLiTemplate.cloneNode(true);
 							clone.querySelector("span").innerText = historyItem;
-							if (historyItem === cmd)
-								clone.classList.add(activeClass);
 							historyOptsElem.appendChild(clone);
 						}
 					}
