@@ -13,3 +13,7 @@
 - Ignore mouseover while typing.
 - Show errors in the Output panel.
 - Fix deleting history item.
+
+## 1.0.3
+- Default to last command.
+- Click on input opens history.

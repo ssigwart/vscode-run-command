@@ -2,7 +2,7 @@
   "name": "run-command",
 	"displayName": "Run Command",
 	"description": "Run a command with the current selection as the input",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"publisher": "ssigwart",
 	"repository": {
 		"type": "git",
