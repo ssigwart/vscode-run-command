@@ -186,6 +186,20 @@
 					li.remove();
 					historyItems = historyItems.filter((val) => val !== cmd);
 				};
+				// Click on input should open history
+				cmdInput.addEventListener("click", (e) => {
+					if (historyElem.hidden)
+					{
+						e.preventDefault();
+						e.stopPropagation();
+						const firstOption = historyOptsElem.querySelector("li");
+						if (firstOption !== null)
+						{
+							firstOption.classList.add(activeClass);
+							historyElem.hidden = false;
+						}
+					}
+				});
 				// Set up li click handler
 				historyOptsElem.addEventListener("click", (e) => {
 					if (e.target.tagName === "LI")
