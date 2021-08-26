@@ -389,6 +389,10 @@
 							clone.querySelector("span").innerText = historyItem;
 							historyOptsElem.appendChild(clone);
 						}
+
+						// Default to last command
+						if (cmdInput.value === "" && historyItems.length > 0)
+							cmdInput.value = historyItems[0];
 					}
 				});
 			});
