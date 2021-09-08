@@ -185,6 +185,11 @@
 					});
 					li.remove();
 					historyItems = historyItems.filter((val) => val !== cmd);
+
+					// Restore typed value
+					if (typedCmd !== null && typedCmd !== "")
+						cmdInput.value = typedCmd;
+					typedCmd = null;
 				};
 				// Click on input should open history
 				cmdInput.addEventListener("click", (e) => {
@@ -366,8 +371,9 @@
 						historyElem.hidden = false;
 				});
 				// Other ways to close
-				document.addEventListener("click", () => {
-					cancelAutocomplete();
+				document.addEventListener("click", (e) => {
+					if (e.target.tagName !== "BUTTON")
+						cancelAutocomplete();
 				});
 				document.body.addEventListener("keyup", (e) => {
 					// Escape
