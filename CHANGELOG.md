@@ -17,3 +17,7 @@
 ## 1.0.3
 - Default to last command.
 - Click on input opens history.
+
+## 1.0.4
+- When defaulting to the last command, select input text to easily replace it with a new command.
+- Fix issue where deleting a command from history could cause the wrong command to run.
