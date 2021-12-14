@@ -21,3 +21,6 @@
 ## 1.0.4
 - When defaulting to the last command, select input text to easily replace it with a new command.
 - Fix issue where deleting a command from history could cause the wrong command to run.
+
+## 1.0.5
+- Close on ESC key.

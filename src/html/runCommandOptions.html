@@ -327,7 +327,18 @@
 					}
 					// Escape
 					else if (e.code === "Escape")
-						cancelAutocomplete();
+					{
+						// Cancel completion
+						if (!historyElem.hidden)
+							cancelAutocomplete();
+						// Close window
+						else
+						{
+							vscode.postMessage({
+								type: "close"
+							});
+						}
+					}
 					// Shift + delete - Delete history
 					else if (e.code === "Delete" && e.shiftKey)
 					{

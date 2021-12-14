@@ -144,6 +144,11 @@ export function activate(context: vscode.ExtensionContext): void
 								context.globalState.update("history", historyItems);
 							}
 							break;
+						// Close window
+						case "close":
+							if (!disposed)
+								panel.dispose();
+							break;
 					}
 				},
 				undefined,
